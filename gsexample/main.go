@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	workerSize = 1
+	workerSize = 3
 )
 
 func main() {
