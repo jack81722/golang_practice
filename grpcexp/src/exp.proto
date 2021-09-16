@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package exp;
+
+option go_package = "proto/exp";
+
+service ExpService{
+    rpc GetExp(GetExpReq) returns (GetExpRes); 
+}
+
+message GetExpReq{
+    int64 count = 1;
+}
+
+message GetExpRes{
+    repeated Exp exps = 1;
+    // enum Error{
+    //     NONE = 0;
+    //     OUTOFRANGE = 1;
+    // }
+}
+
+message Exp{
+    int64 id = 1;
+    string name = 2;
+}
