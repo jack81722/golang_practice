@@ -1,0 +1,94 @@
+package adapter
+
+import (
+	"context"
+	"encoding/json"
+
+	"cloud.google.com/go/pubsub"
+)
+
+type PubSub struct {
+	client       *pubsub.Client
+	topic        *pubsub.Topic
+	subscription *pubsub.Subscription
+}
+
+func NewPubSub(topic, subscription, projID string) (p *PubSub, err error) {
+	ctx := context.Background()
+	p = &PubSub{}
+	p.client, err = pubsub.NewClient(ctx, projID)
+	if err != nil {
+		return
+	}
+
+	p.topic, err = createTopicIfNotExists(p.client, topic)
+	if err != nil {
+		return
+	}
+	p.subscription, err = createSubIfNotExists(p.client, p.topic, subscription)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (p *PubSub) Close() {
+	p.client.Close()
+}
+
+func (p *PubSub) Publish(ctx context.Context, obj interface{}) (err error) {
+	payload, err := json.Marshal(obj)
+	if err != nil {
+		return
+	}
+	p.topic.Publish(ctx, &pubsub.Message{Data: payload})
+	return
+}
+
+func (p *PubSub) Subscribe(ctx context.Context, callback func(ctx context.Context, m *pubsub.Message)) (err error) {
+	err = p.subscription.Receive(ctx, callback)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func createTopicIfNotExists(c *pubsub.Client, topic string) (t *pubsub.Topic, err error) {
+	ctx := context.Background()
+
+	// Create a topic to subscribe to.
+	t = c.Topic(topic)
+	ok, err := t.Exists(ctx)
+	if err != nil {
+		return
+	}
+	if ok {
+		return
+	}
+
+	t, err = c.CreateTopic(ctx, topic)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func createSubIfNotExists(c *pubsub.Client, topic *pubsub.Topic, sub string) (*pubsub.Subscription, error) {
+	ctx := context.Background()
+
+	// Create a topic to subscribe to.
+	s := c.Subscription(sub)
+	ok, err := s.Exists(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		return s, nil
+	}
+
+	s, err = c.CreateSubscription(ctx, sub, pubsub.SubscriptionConfig{Topic: topic})
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
